@@ -1,0 +1,36 @@
+app:
+  gdpr-controller-established-in-the-eu: false
+  constants:
+    eu-continent-code: EU
+
+server:
+  servlet:
+    context-path: /api
+  error:
+    whitelabel:
+      enabled: false
+spring:
+  security:
+    user:
+      name: admin
+      password: v8yQZzHQEDmW6Ps8  # Initial admin password. Must be changed immediately after first application launch.
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            # Avoid a known issue. See https://github.com/pgjdbc/pgjdbc/issues/1102#issuecomment-398036270 for details.
+            non_contextual_creation: true
+  datasource:
+    url: ${CONSUMER_CONSENTS_APP_DB_URL}
+    username: ${CONSUMER_CONSENTS_APP_DB_USER_NAME}
+    password: ${CONSUMER_CONSENTS_APP_DB_PASSWORD}
+    
+management:
+  endpoints:
+    enabled-by-default: true
+  endpoint:
+    health:
+      show-details: always
