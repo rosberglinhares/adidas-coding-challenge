@@ -44,5 +44,64 @@
 4. After that you can open the URL *http://localhost:8080/api/swagger-ui.html* and start using the application API.
    Observe that most APIs needs authentication to work.
 
+## Frameworks / Libraries used
+
+<table>
+<thead>
+    <tr>
+        <th align="center">Artifact</th>
+        <th align="center">Name</th>
+        <th>Description</th>
+    </tr>
+</thead>
+<tbody>
+    <tr>
+        <td align="center">spring-boot-starter-security</td>
+        <td align="center">Spring Security</td>
+        <td>Used for Authentication, authorization and cryptography.</td>
+    </tr>
+    <tr>
+        <td align="center">spring-boot-starter-data-jpa</td>
+        <td align="center">Spring Data JPA</td>
+        <td>Database access. Eases development of applications that need to access JPA data sources.</td>
+    </tr>
+    <tr>
+        <td align="center">spring-boot-starter-actuator</td>
+        <td align="center">Spring Boot Actuator</td>
+        <td>
+            Brings production-ready features for monitoring application health. Through the HEALTHCHECK instruction,
+            Docker can use the Actuator information to test a container to check that it is still working. This will
+            enable the implementation of an autoscalng platform.
+        </td>
+    </tr>
+    <tr>
+        <td align="center">postgresql</td>
+        <td align="center">PostgreSQL Driver</td>
+        <td>Java JDBC 4.2 (JRE 8+) driver for PostgreSQL database.</td>
+    </tr>
+    <tr>
+        <td align="center">geoip2</td>
+        <td align="center">MaxMind GeoIP2</td>
+        <td>
+            Gets the location of a user based on your IP address. The main advantage of this library is that
+            it does not require internet access to get geographic location data.
+        </td>
+    </tr>
+    <tr>
+        <td align="center">springfox-swagger2</td>
+        <td align="center">SpringFox</td>
+        <td>Automated JSON API documentation for API's built with Spring.</td>
+    </tr>
+    <tr>
+        <td align="center">springfox-swagger-ui</td>
+        <td align="center">SpringFox Swagger UI</td>
+        <td>
+            Swagger UI allows to visualize and interact with the API’s resources without having any of the
+            implementation logic in place.
+        </td>
+    </tr>
+</tbody>
+</table>
+
 [1]: https://www.oracle.com/technetwork/java/javase/downloads/jdk11-downloads-5066655.html
 [2]: https://maven.apache.org/download.cgi
