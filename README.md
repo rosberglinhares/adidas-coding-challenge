@@ -1,5 +1,24 @@
 # Adidas Coding Challenge
 
+## Application Architecture
+
+![Consumer Consents Architecture](https://raw.githubusercontent.com/rosberglinhares/adidas-coding-challenge/master/Documentation/ConsumerConsentsArchitecture.png)
+
+* The AWS Global Accelerator will be responsible to expose the Application Load Balancers to the internet. Its use has the following benefits:
+    1. The user traffic is directed to the nearest application endpoint to the client, thus reducing internet latency and jitter;
+    2. Improves application availability by continuously monitoring the health of application endpoints and routing traffic to the closest healthy endpoints;
+    3. Eliminates the complexity of managing specific IP addresses for different AWS Regions.
+    
+* The three Kubernetes clusters control planes are visible to the internet. This allows running commands against these clusters through the *kubectl* tool.
+
+* Each Kubernetes cluster will get the container images from an Amazon Container Registry (ECR) located in the same region.
+
+* For the database, there will be a primary DB Instance that synchronously replicates the data to a standby instance in a different Availability Zone (AZ). Each AZ runs on its own physically distinct, independent infrastructure, and is engineered to be highly reliable.
+
+## Application usual flow
+
+![Sequence Diagram](https://raw.githubusercontent.com/rosberglinhares/adidas-coding-challenge/master/Documentation/SequenceDiagram.png)
+
 ## How to build
 
 1. Make sure you have [JDK 11+][1] and [Maven][2] installed.
@@ -23,7 +42,7 @@
 
 5. That is it. Your package will be located at */ConsumerConsentsApp/target/consumer-consents-app.jar*.
 
-## Running the application
+## Running the application locally
 
 1. Setup the database access information changing the following environment variables:
 
@@ -43,6 +62,16 @@
 
 4. After that you can open the URL *http://localhost:8080/api/swagger-ui.html* and start using the application API.
    Observe that most APIs needs authentication to work.
+
+## New version deployment
+
+1. Build the application following the steps on the *How to build* section;
+
+2. Build a container image with a new version tag and send it to the Amazon Container Registry (ECR) of each cluster region;
+
+3. Provision possible infrastructure changes by deploying the */Implementation/ConsumerConsentsInfrastructure.yaml* CloudFormation file;
+
+4. Make a new kubernetes deployment in each region referencing this new container image using the *kubectl* tool.
 
 ## Frameworks / Libraries used
 

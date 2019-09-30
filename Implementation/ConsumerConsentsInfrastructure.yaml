@@ -1,0 +1,336 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  DatabaseMasterUserPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 128
+    Description: The password for the database master user (postgres)
+  KubernetesClusterEuRegion:
+    Type: String
+    Description: The region of the EU Kubernetes cluster
+    AllowedValues:
+      - eu-central-1
+      - eu-north-1
+      - eu-west-1
+      - eu-west-2
+      - eu-west-3
+  KubernetesClusterEuVpcId:
+    Type: String
+    AllowedPattern: .+
+    Description: The VPC ID of the EU Kubernetes cluster
+    ConstraintDescription: Required value
+  KubernetesClusterEuVpcIpAddress:
+    Type: String
+    AllowedPattern: .+
+    Description: The VPC IP address (CIDR) of the EU Kubernetes cluster
+    ConstraintDescription: Required value
+  KubernetesClusterUsRegion:
+    Type: String
+    Description: The region of the US Kubernetes cluster
+    AllowedValues:
+      - us-east-1
+      - us-east-2
+      - us-west-1
+      - us-west-2
+  KubernetesClusterUsVpcId:
+    Type: String
+    AllowedPattern: .+
+    Description: The VPC ID of the US Kubernetes cluster
+    ConstraintDescription: Required value
+  KubernetesClusterUsVpcIpAddress:
+    Type: String
+    AllowedPattern: .+
+    Description: The VPC IP address (CIDR) of the US Kubernetes cluster
+    ConstraintDescription: Required value
+  KubernetesClusterChinaRegion:
+    Type: String
+    Description: The region of the China Kubernetes cluster
+    AllowedValues:
+      - ap-east-1
+  KubernetesClusterChinaVpcId:
+    Type: String
+    AllowedPattern: .+
+    Description: The VPC ID of the China Kubernetes cluster
+    ConstraintDescription: Required value
+  KubernetesClusterChinaVpcIpAddress:
+    Type: String
+    AllowedPattern: .+
+    Description: The VPC IP address (CIDR) of the China Kubernetes cluster
+    ConstraintDescription: Required value
+Resources:
+  # --------------------------- Database Network ---------------------------
+  
+  DatabaseVPC:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: 172.16.0.0/16  # As recommended by RFC 1918
+      InstanceTenancy: default
+      EnableDnsSupport: false
+      Tags:
+        - Key: Name
+          Value: DatabaseVPC
+  
+  DatabaseSubnet01:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DatabaseVPC
+      CidrBlock: 172.16.0.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: DatabaseSubnet01
+  DatabaseSubnet01NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref DatabaseSubnet01
+      NetworkAclId: !Ref DatabaseNetworkAcl
+  DatabaseSubnet01RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref DatabaseSubnet01
+      RouteTableId: !Ref DatabaseRouteTable
+  
+  DatabaseSubnet02:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DatabaseVPC
+      CidrBlock: 172.16.1.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: DatabaseSubnet02
+  DatabaseSubnet02NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref DatabaseSubnet02
+      NetworkAclId: !Ref DatabaseNetworkAcl
+  DatabaseSubnet02RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref DatabaseSubnet02
+      RouteTableId: !Ref DatabaseRouteTable
+  
+  DatabaseSubnet03:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref DatabaseVPC
+      CidrBlock: 172.16.2.0/24
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: DatabaseSubnet03
+  DatabaseSubnet03NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref DatabaseSubnet03
+      NetworkAclId: !Ref DatabaseNetworkAcl
+  DatabaseSubnet03RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties: 
+      SubnetId: !Ref DatabaseSubnet03
+      RouteTableId: !Ref DatabaseRouteTable
+  
+  # --------------------------- Network Acls ---------------------------
+  
+  DatabaseNetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref DatabaseVPC
+      Tags:
+        - Key: Name
+          Value: DatabaseNetworkAcl
+  # EU Kubernetes Cluster
+  EuEksToPostgreSQLInboundNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref DatabaseNetworkAcl
+      RuleNumber: 100
+      Egress: false  # Inbound
+      Protocol: 6    # TCP
+      PortRange:
+        From: 5432   # PostgreSQL
+        To: 5432
+      CidrBlock: !Ref KubernetesClusterEuVpcIpAddress
+      RuleAction: allow
+  PostgreSQLToEuEksEphemeralPortsOutboundNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties: 
+      NetworkAclId: !Ref DatabaseNetworkAcl
+      RuleNumber: 100
+      Egress: true  # Outbound
+      Protocol: 6   # TCP
+      PortRange:
+        From: 1024
+        To: 65535
+      CidrBlock: !Ref KubernetesClusterEuVpcIpAddress
+      RuleAction: allow
+  # US Kubernetes Cluster
+  UsEksToPostgreSQLInboundNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref DatabaseNetworkAcl
+      RuleNumber: 101
+      Egress: false  # Inbound
+      Protocol: 6    # TCP
+      PortRange:
+        From: 5432   # PostgreSQL
+        To: 5432
+      CidrBlock: !Ref KubernetesClusterUsVpcIpAddress
+      RuleAction: allow
+  PostgreSQLToUsEksEphemeralPortsOutboundNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties: 
+      NetworkAclId: !Ref DatabaseNetworkAcl
+      RuleNumber: 101
+      Egress: true  # Outbound
+      Protocol: 6   # TCP
+      PortRange:
+        From: 1024
+        To: 65535
+      CidrBlock: !Ref KubernetesClusterUsVpcIpAddress
+      RuleAction: allow
+  # China Kubernetes Cluster
+  ChinaEksToPostgreSQLInboundNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref DatabaseNetworkAcl
+      RuleNumber: 102
+      Egress: false  # Inbound
+      Protocol: 6    # TCP
+      PortRange:
+        From: 5432   # PostgreSQL
+        To: 5432
+      CidrBlock: !Ref KubernetesClusterChinaVpcIpAddress
+      RuleAction: allow
+  PostgreSQLToChinaEksEphemeralPortsOutboundNetworkAclEntry:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties: 
+      NetworkAclId: !Ref DatabaseNetworkAcl
+      RuleNumber: 102
+      Egress: true  # Outbound
+      Protocol: 6   # TCP
+      PortRange:
+        From: 1024
+        To: 65535
+      CidrBlock: !Ref KubernetesClusterChinaVpcIpAddress
+      RuleAction: allow
+  
+  # --------------------------- Routes ---------------------------
+  
+  DatabaseRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref DatabaseVPC
+      Tags:
+        - Key: Name
+          Value: DatabaseRouteTable
+  
+  # EU Kubernetes Cluster Routes
+  EuEksToDatabasePeeringConnection:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+       VpcId: !Ref DatabaseVPC
+       PeerRegion: !Ref KubernetesClusterEuRegion
+       PeerVpcId: !Ref KubernetesClusterEuVpcId
+       Tags:
+        - Key: Name
+          Value: EuEksToDatabasePeeringConnection
+  DatabaseToEuEksRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId: !Ref DatabaseRouteTable
+       DestinationCidrBlock: !Ref KubernetesClusterEuVpcIpAddress
+       VpcPeeringConnectionId: !Ref EuEksToDatabasePeeringConnection
+  # US Kubernetes Cluster Routes
+  UsEksToDatabasePeeringConnection:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+       VpcId: !Ref DatabaseVPC
+       PeerRegion: !Ref KubernetesClusterUsRegion
+       PeerVpcId: !Ref KubernetesClusterUsVpcId
+       Tags:
+        - Key: Name
+          Value: UsEksToDatabasePeeringConnection
+  DatabaseToUsEksRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId: !Ref DatabaseRouteTable
+       DestinationCidrBlock: !Ref KubernetesClusterUsVpcIpAddress
+       VpcPeeringConnectionId: !Ref UsEksToDatabasePeeringConnection
+  # China Kubernetes Cluster Routes
+  ChinaEksToDatabasePeeringConnection:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+       VpcId: !Ref DatabaseVPC
+       PeerRegion: !Ref KubernetesClusterChinaRegion
+       PeerVpcId: !Ref KubernetesClusterChinaVpcId
+       Tags:
+        - Key: Name
+          Value: ChinaEksToDatabasePeeringConnection
+  DatabaseToChinaEksRoute:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId: !Ref DatabaseRouteTable
+       DestinationCidrBlock: !Ref KubernetesClusterChinaVpcIpAddress
+       VpcPeeringConnectionId: !Ref ChinaEksToDatabasePeeringConnection
+  
+  # --------------------------- Security Groups ---------------------------
+  
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        VpcId: !Ref DatabaseVPC
+        GroupName: postgresql-security-group
+        GroupDescription: Security group for PostgreSQL
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            CidrIp: !Ref KubernetesClusterEuVpcIpAddress
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            CidrIp: !Ref KubernetesClusterUsVpcIpAddress
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            CidrIp: !Ref KubernetesClusterChinaVpcIpAddress
+  
+  # --------------------------- Database ---------------------------
+    
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+       Engine: postgres
+       EngineVersion: 11.4
+       DBInstanceIdentifier: postgresql
+       DBName: consumer_consents
+       MasterUsername: postgres
+       MasterUserPassword: !Ref DatabaseMasterUserPassword
+       MultiAZ: true
+       DBSubnetGroupName: !Ref DatabaseSubnetGroup
+       PubliclyAccessible: false
+       VPCSecurityGroups:
+         - !Ref DatabaseSecurityGroup
+       Port: 5432
+       DBInstanceClass: db.m5.xlarge
+       StorageType: io1  # Provisioned IOPS (SSD)
+       Iops: 5000        # Support the non-functional requirement of 5k req/second
+       # According to the AWS documentation:
+       # The maximum ratio of provisioned IOPS to requested volume size (in GiB) is 50:1. For example,
+       # a 100 GiB volume can be provisioned with up to 5,000 IOPS.
+       AllocatedStorage: 100
+       BackupRetentionPeriod: 7
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: postgresql-subnet-group
+      DBSubnetGroupDescription: Subnets for PostgreSQL
+      SubnetIds:
+        - !Ref DatabaseSubnet01
+        - !Ref DatabaseSubnet02
+        - !Ref DatabaseSubnet03
